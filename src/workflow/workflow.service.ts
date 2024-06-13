@@ -3,7 +3,7 @@ import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { BapiRequisitionItem } from '../_interface/bapiRequisitionItems.interface'
 import { Repository } from 'typeorm';
-import { WorkflowStep } from './entities/workflow-step.entity';
+import { WorkflowStep } from '../workflow-step/entities/workflow-step.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WorkflowCondition } from './entities/workflow-condition';
 import { WorkflowRule } from './entities/workflow-rule.entity';
@@ -16,23 +16,25 @@ import { RequestContext } from 'src/common/request-context/request-context.model
 export class WorkflowService {
   constructor(
     @InjectRepository(Workflow)
-    private readonly repo: Repository<Workflow>,
+    private readonly repoWorkflow: Repository<Workflow>,
+    @InjectRepository(WorkflowStep)
+    private readonly repoWorkflowStep: Repository<WorkflowStep>,
     @InjectRepository(WorkflowAction)
     private readonly repoAction: Repository<WorkflowAction>,
   ) { }
 
   createWorkflow(createWorkflowDto: CreateWorkflowDto) {
-    this.repo.save({companyCode:createWorkflowDto.companyCode,workflowCode:createWorkflowDto.workflowCode,workflowName:createWorkflowDto.workflowName,docType:createWorkflowDto.docType})
+    this.repoWorkflow.save({companyCode:createWorkflowDto.companyCode,workflowCode:createWorkflowDto.workflowCode,workflowName:createWorkflowDto.workflowName,docType:createWorkflowDto.docType})
 
   }
 
   async findAllWorkflow() {
-    const wf = await this.repo.find({
+    const wf = await this.repoWorkflow.find({
       relations: { steps: true },
       order: {
         steps: {
           seq: 'asc',
-        }
+        },
       }
     })
     return wf;
@@ -42,15 +44,18 @@ export class WorkflowService {
 
 
   updateWorkflow(id: number, updateWorkflowDto: UpdateWorkflowDto) {
-    this.repo.update({companyCode:updateWorkflowDto.companyCode,workflowCode:updateWorkflowDto.workflowCode},{workflowName:updateWorkflowDto.workflowName,docType:updateWorkflowDto.docType})
+    this.repoWorkflow.update({companyCode:updateWorkflowDto.companyCode,workflowCode:updateWorkflowDto.workflowCode},{workflowName:updateWorkflowDto.workflowName,docType:updateWorkflowDto.docType})
     
   }
 
   removeWorkflow(id: number) {
     return `This action removes a #${id} workflow`;
   }
+
+
+
   async getWorkflowConfig(companyCode: string, type: string) {
-    const wf = await this.repo.findOne({
+    const wf = await this.repoWorkflow.findOne({
       where: {
         companyCode: companyCode,
         docType: type,

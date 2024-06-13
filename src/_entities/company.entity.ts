@@ -3,6 +3,7 @@ import { AbstractEntity } from './_abtract.entity';
 import { Employee } from './employee.entity';
 import { Application } from './application.entity';
 import { User } from './user.entity';
+import { Workflow } from 'src/workflow/entities/workflow.entity';
 
 @Entity()
 export class Company extends AbstractEntity<Company> {
@@ -35,4 +36,5 @@ export class Company extends AbstractEntity<Company> {
 
   @OneToMany(() => Application, (app) => app.company)
   applications: Application[];
+  
 }

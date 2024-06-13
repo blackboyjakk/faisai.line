@@ -36,12 +36,14 @@ axios.interceptors.response.use(
         window.location.href = error.response.data
       }
       if (error.response.status === 401) {
-        liff.logout();
-            localStorage.setItem('redirectUri', window.location.href)
-            setTimeout(()=>{
+        
+        localStorage.setItem('redirectUri', window.location.href)
+        setTimeout(async () => {
+          window.location.href = '/auth'
+        
+        }, 1000)
 
-            liff.login();
-            },1000)
+
         
       }
     }

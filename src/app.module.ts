@@ -13,6 +13,8 @@ import { join } from 'path';
 import { HttpModule } from '@nestjs/axios';
 import { WorkflowModule } from './workflow/workflow.module';
 import { MasterModule } from './master/master.module';
+import { WorkflowStepModule } from './workflow-step/workflow-step.module';
+import { WorkflowRuleModule } from './workflow-rule/workflow-rule.module';
 
 const routes = [
   {
@@ -45,7 +47,9 @@ const routes = [
     MessagerModule,
     DocumentModule,
     WorkflowModule,
-    MasterModule,],
+    MasterModule,
+    WorkflowStepModule,
+    WorkflowRuleModule,],
   controllers: [AppController],
   providers: [AppService],
 })

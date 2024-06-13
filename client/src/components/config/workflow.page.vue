@@ -34,8 +34,11 @@
   const workflowDialog = ref(false);
 
   const initStep = {
+    mode: '',
     companyCode: '',
+    companyName: '',
     workflowCode: '',
+    workflowName: '',
     seq: 0,
     stepCode: '',
     stepName: '',
@@ -62,31 +65,31 @@
   const load = async () => {
 
     master.companies = await masterService.getAllCompany();
-    //   lineLogin().then(() => {
+    lineLogin().then(() => {
 
-    //   }).catch(() => {
-    //     alert("Line Authentication failed");
-    //   });
-    // };
+    }).catch(() => {
+      alert("Line Authentication failed");
+    });
+  };
 
-    // const lineLogin = async () => {
+  const lineLogin = async () => {
 
     liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }, () => {
-      //     if (liff.isLoggedIn()) {
-      //       loadDoc();
-      //     } else {
+      if (liff.isLoggedIn()) {
+        loadDoc();
+      } else {
 
-      //       localStorage.setItem('redirectUri', route.fullPath)
-      //       liff.login();
+        localStorage.setItem('redirectUri', route.fullPath)
+        liff.login();
 
-      //     }
-      //   }, (error) => {
-      //     console.log(error)
+      }
+    }, (error) => {
+      console.log(error)
     })
 
-    // }
+  }
 
-    // const loadDoc = () => {
+  const loadDoc = () => {
 
 
     console.log('loadDoc');
@@ -147,10 +150,13 @@
     workflowDialog.value = true
   }
 
-  const editStep = (prop: any) => {
+  const openStepDialog = (mode: string, prop: any) => {
     console.log(prop)
+    stepForm.mode = mode
     stepForm.companyCode = prop.companyCode
+    stepForm.companyName = master.companies.find(c => c.companyCode == prop.companyCode)?.nameEn || ''
     stepForm.workflowCode = prop.workflowCode
+    stepForm.workflowName = prop.workflowName
     stepForm.stepCode = prop.stepCode
     stepForm.stepName = prop.stepName
     stepForm.action = prop.action
@@ -178,17 +184,30 @@
     if (workflowForm.mode == 'New') {
       axios.post('workflow', workflowForm).then(res => {
         workflowDialog.value = false
+        load()
       })
     } else if (workflowForm.mode == 'Edit') {
       axios.patch('workflow/' + workflowForm.workflowCode, workflowForm).then(res => {
         workflowDialog.value = false
+        load()
       })
     }
   }
 
   const saveStep = () => {
 
-    stepDialog.value = false
+
+    if (stepForm.mode == 'New') {
+      axios.post('workflow-step', stepForm).then(res => {
+        stepDialog.value = false
+        load()
+      })
+    } else if (stepForm.mode == 'Edit') {
+      axios.patch('workflow-step/' + stepForm.stepCode, stepForm).then(res => {
+        stepDialog.value = false
+        load()
+      })
+    }
   }
 
   const onRowExpand = (event: any) => {
@@ -208,48 +227,55 @@
         <Button label="Edit" icon="pi pi-plus-circle" @click="editWorkflow(selectedWorkflow)"></Button>
       </div>
     </div> -->
-    <div class="flex flex-row">
+    <Panel class="card flex flex-row">
       <DataTable :value="workflows" v-model:expandedRows="expandedRows" dataKey="workflowCode"
-        @onRowExpand="onRowExpand" tableStyle="min-width: 60rem">
+        @onRowExpand="onRowExpand" size="large" tableStyle="min-width: 60rem">
         <template #header>
 
-          <div class="flex gap-3 mt-1 w-full">
-            <Button icon="pi pi-plus-circle" @click="openWorkflowDialog('New', { ...initWorkflow })"></Button>
+          <div class="flex gap-3">
+            <Button icon="pi pi-plus-circle" label="Create new Workflow"  size="small" 
+              @click="openWorkflowDialog('New', { ...initWorkflow })"></Button>
           </div>
         </template>
         <Column expander style="width: 5rem" />
-        <Column field="companyCode"></Column>
-        <Column field="doctype"></Column>
-        <Column field="workflowCode"></Column>
-        <Column field="workflowName"></Column>
+        <Column field="companyCode" header="Company" header-class="underline"></Column>
+        <Column field="docType" header="Doc Type" header-class="underline"></Column>
+        <Column field="workflowCode" header="Workflow Code" header-class="underline"></Column>
+        <Column field="workflowName" header="Workflow Name" header-class="underline"></Column>
 
 
         <Column headerStyle="width:4rem">
-          <template #body="slotProps">
-            <Button icon="pi pi-pencil" @click="openWorkflowDialog('Edit', slotProps.data)" />
+          <template #body="workflowProps">
+            <Button icon="pi pi-pencil" @click="openWorkflowDialog('Edit', workflowProps.data)"   size="small" />
           </template>
         </Column>
 
 
-        <template #expansion="slotProps">
+        <template #expansion="workflowProps">
           <div class="p-3">
-            <h5>Steps for {{ slotProps.data.name }}</h5>
-            <DataTable :value="slotProps.data.steps">
-              <Column field="stepCode" header="Step Code"></Column>
-              <Column field="stepName" header="Steo Name"></Column>
-              <Column field="action" header="Action"></Column>
+            <DataTable :value="workflowProps.data.steps" size="small">
+              <Column field="stepCode" header="Step Code" header-class="underline"></Column>
+              <Column field="stepName" header="Step Name" header-class="underline"></Column>
+              <Column field="action" header="Action" header-class="underline"></Column>
 
 
               <Column headerStyle="width:4rem">
-                <template #body="slotProps">
-                  <Button icon="pi pi-pencil" @click="editStep(slotProps.data)" />
+                <template #body="stepProps">
+                  <Button icon="pi pi-pencil" size="small" @click="openStepDialog('Edit',{... stepProps.data, ...workflowProps.data})" />
                 </template>
               </Column>
+              <template #footer>
+
+                <div class="flex gap-3">
+                  <Button icon="pi pi-plus-circle" label="Create new Step"  size="small" 
+                    @click="openStepDialog('New', { ...initStep, ...workflowProps.data })"></Button>
+                </div>
+              </template>
             </DataTable>
           </div>
         </template>
       </DataTable>
-    </div>
+    </Panel>
     <!-- <div class="flex flex-row">
       <Breadcrumb :model="steps">
         <template #item="{ item, props }">
@@ -307,10 +333,10 @@
 
     <div class="flex flex-col align-items-center gap-3 mb-3">
 
-      <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Company" v-model="workflowForm.companyCode" option-value="companyCode"
-        option-label="nameEn" :options="master.companies" />
-      <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Document Type" v-model="workflowForm.docType" option-value="value" option-label="name"
-        :options="master.docTypes" />
+      <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Company" v-model="workflowForm.companyCode"
+        option-value="companyCode" option-label="nameEn" :options="master.companies" />
+      <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Document Type" v-model="workflowForm.docType"
+        option-value="value" option-label="name" :options="master.docTypes" />
 
       <InputText placeholder="Workflow Code" v-model="workflowForm.workflowCode" />
       <InputText placeholder="Workflow Name" v-model="workflowForm.workflowName" />
@@ -325,8 +351,9 @@
   <Dialog v-model:visible="stepDialog" modal header="Step">
 
     <div class="flex flex-col align-items-center gap-3 mb-3">
-
-      <InputText  :disabled="workflowForm.mode == 'Edit'" placeholder="Step Code" v-model="stepForm.stepCode" />
+      <div>Company : {{ stepForm.companyName }}</div>
+      <div>Workflow : {{ stepForm.workflowName }}</div>
+      <InputText :disabled="stepForm.mode == 'Edit'" placeholder="Step Code" v-model="stepForm.stepCode" />
       <InputText placeholder="Step Name" v-model="stepForm.stepName" />
       <Dropdown placeholder="Action" v-model="stepForm.action" option-value="value" option-label="name"
         :options="[{ value: 'C', name: 'Check' }, { value: 'P', name: 'Post' }]" />

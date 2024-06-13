@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { Workflow } from './workflow/entities/workflow.entity';
-import { WorkflowStep } from './workflow/entities/workflow-step.entity';
+import { WorkflowStep } from './workflow-step/entities/workflow-step.entity';
 import { WorkflowRule } from './workflow/entities/workflow-rule.entity';
 import { WorkflowCondition } from './workflow/entities/workflow-condition';
 import { WorkflowAction } from './workflow/entities/workflow-action';

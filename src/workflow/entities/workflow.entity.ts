@@ -1,7 +1,8 @@
 
-import { Entity, Column, PrimaryColumn, OneToMany, JoinTable, JoinColumn } from 'typeorm';
-import  {WorkflowStep}  from './workflow-step.entity';
+import { Entity, Column, PrimaryColumn, OneToMany, JoinTable, JoinColumn, ManyToOne } from 'typeorm';
+import  {WorkflowStep}  from '../../workflow-step/entities/workflow-step.entity';
 import {AbstractEntity} from 'src/_entities/_abtract.entity'
+import { Company } from 'src/_entities/company.entity';
 @Entity()
 export class Workflow  extends AbstractEntity<Workflow>{
 

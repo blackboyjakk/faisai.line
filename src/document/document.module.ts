@@ -6,7 +6,7 @@ import { WorkflowService } from 'src/workflow/workflow.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Workflow } from 'src/workflow/entities/workflow.entity';
 import { WorkflowAction } from 'src/workflow/entities/workflow-action';
-import { WorkflowStep } from 'src/workflow/entities/workflow-step.entity';
+import { WorkflowStep } from 'src/workflow-step/entities/workflow-step.entity';
 
 @Module({
   imports: [
