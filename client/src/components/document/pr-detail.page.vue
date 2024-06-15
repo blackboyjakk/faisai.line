@@ -3,7 +3,7 @@
   import axios, { AxiosError } from 'axios';
   import { ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-
+  import { useConfirm } from "primevue/useconfirm";
 
   const route = useRoute();
   const router = useRouter();
@@ -13,31 +13,26 @@
   const workflow = ref<any>([]);
   const note = ref('');
   let token: string | null = '';
-
-
+  const confirm = useConfirm();
+  const isLogin = ref(false);
   const load = async () => {
-    lineLogin().then(() => {
 
-    }).catch(() => {
-      alert("Line Authentication failed");
-    });
+    await liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID })
+
+    if (liff.isInClient()) {
+      loadDoc()
+    } else {
+      if (liff.isLoggedIn()) {
+        isLogin.value = true
+        loadDoc()
+      } else {
+        localStorage.setItem('redirectUri',  window.location.href);
+      }
+    }
   };
 
-  const lineLogin = async () => {
-
-    liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }, () => {
-      if (liff.isLoggedIn()) {
-        loadDoc();
-      } else {
-
-        localStorage.setItem('redirectUri', route.fullPath)
-        liff.login();
-
-      }
-    }, (error) => {
-      console.log(error)
-    })
-
+  const lineLogin = () => {
+    liff.login()
   }
 
   const loadDoc = () => {
@@ -45,7 +40,7 @@
 
     console.log('loadDoc');
 
-    axios.post(`document/${prNo}/${itemNo}`).then((res) => {
+    axios.post(`document/pr/${prNo}/${itemNo}`).then((res) => {
       console.log(res.data);
       doc.value = res.data.item;
       workflow.value = res.data.actions;
@@ -53,7 +48,7 @@
       if (error.response?.data.statusCode == 401) {
 
         console.log('error', error);
-        localStorage.setItem('redirectUri', route.path);
+        localStorage.setItem('redirectUri', window.location.href);
         setTimeout(() => {
           router.push({ name: 'auth' })
         }, 1000)
@@ -65,7 +60,7 @@
 
   const approve = () => {
 
-    axios.post(`document/${prNo}/${itemNo}/approve`, {
+    axios.post(`document/pr/${prNo}/${itemNo}/approve`, {
       note: note.value
     }, {
 
@@ -80,7 +75,7 @@
     });
   }
   const displayWF = () => {
-    axios.post(`document/${prNo}/${itemNo}/workflow`, {
+    axios.post(`document/pr/${prNo}/${itemNo}/workflow`, {
 
     }).then((res) => {
       workflow.value = res.data;
@@ -92,12 +87,12 @@
       alert(error.response?.data.message);
     });
   }
-  const actionSeverity = (actionCode:string) => {
+  const actionSeverity = (actionCode: string) => {
     switch (actionCode) {
       case 'A': return 'success'
       case 'W': return 'info'
       case 'R': return 'danger'
-    
+
       default:
         break;
     }
@@ -106,7 +101,7 @@
 </script>
 
 <template>
-  <Card>
+  <Card v-if="isLogin">
     <template #title>Approve Request</template>
     <template #content>
       <p class="m-0">
@@ -127,11 +122,13 @@
 
       </form>
       <Accordion :multiple="true">
-        <AccordionTab v-for="wf in workflow" :key="wf.step" >
+        <AccordionTab v-for="wf in workflow" :key="wf.step">
           <template #header>
             <span class="flex align-items-center gap-2 w-full">
               <span class="font-bold white-space-nowrap w-2/3">{{ wf.stepName }}</span>
-              <span class=" w-1/3"> <Tag  :value="wf.status"  :severity="actionSeverity(wf.status)" class="ml-auto mr-2" /></span>
+              <span class=" w-1/3">
+                <Tag :value="wf.status" :severity="actionSeverity(wf.status)" class="ml-auto mr-2" />
+              </span>
             </span>
           </template>
           <span class="m-0">{{ wf.actorType }}: {{ wf.actorName }}</span>
@@ -145,8 +142,7 @@
       </div>
     </template>
   </Card>
-
-
+  <Button v-if="!isLogin" label="Login" @click="lineLogin"></Button>
 
 
 

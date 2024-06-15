@@ -20,6 +20,7 @@ declare module 'vue' {
     'Login.page': typeof import('./src/components/auth/login.page.vue')['default']
     Menubar: typeof import('primevue/menubar')['default']
     Panel: typeof import('primevue/panel')['default']
+    'PoDetail.page': typeof import('./src/components/document/po-detail.page.vue')['default']
     'PrDetail.page': typeof import('./src/components/document/pr-detail.page.vue')['default']
     'Register.page': typeof import('./src/components/auth/register.page.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

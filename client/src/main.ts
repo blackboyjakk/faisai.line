@@ -7,6 +7,7 @@ import liff from '@line/liff'
 import './helper/number-format'
 import router from './router'
 import PrimeVue from 'primevue/config';
+import ConfirmationService from 'primevue/confirmationservice';
 const app = createApp(App)
 
 
@@ -35,22 +36,13 @@ axios.interceptors.response.use(
         console.log(error.response.data)
         window.location.href = error.response.data
       }
-      if (error.response.status === 401) {
-        
-        localStorage.setItem('redirectUri', window.location.href)
-        setTimeout(async () => {
-          window.location.href = '/auth'
-        
-        }, 1000)
-
-
-        
-      }
+      
     }
     return Promise.reject(error)
   },
 );
 
 app.use(PrimeVue);
+app.use(ConfirmationService);
 app.use(router)
 app.mount('#app')

@@ -1,81 +1,88 @@
 <script setup lang="ts">
 
-import { ref } from 'vue'
-import liff from '@line/liff';
-import axios, { AxiosError } from 'axios';
-import router from '../../router/index';
+    import { ref } from 'vue'
+    import liff from '@line/liff';
+    import axios, { AxiosError } from 'axios';
+    import router from '../../router/index';
 
-const loading = ref(true);
-const isLoggedIn = ref(false);
-const message = ref('');
-const error = ref('');
+    const loading = ref(true);
+    const isLoggedIn = ref(false);
+    const message = ref('');
+    const error = ref('');
 
-const load = async () => {
-    await lineLogin().then(() => {
-        checkAuth();
-    });
-};
+    const load = async () => {
+        await lineLogin().then(() => {
+            checkAuth();
+        });
+    };
 
-const lineLogin = async () => {
-    const token = null
-    await liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID })
-    if (liff.isLoggedIn()) {
-        const token = await liff.getIDToken();
-        if(token)
-         localStorage.setItem(`LIFF_STORE:${import.meta.env.VITE_LINE_LIFF_ID}:IDToken`,token)
-        loading.value = false;
+    const lineLogin = async () => {
 
+        return liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }).then(() => {
+            if (liff.isLoggedIn()) {
+                const token = liff.getIDToken();
+                console.log(token);
+                if (token) {
+                    localStorage.setItem(`LIFF_STORE:${import.meta.env.VITE_LINE_LIFF_ID}:IDToken`, token)
+                }
+                else {
+                    liff.logout()
+                    liff.login();
+                }
 
-        return token
-    } else {
-        liff.login();
-    }
-    return token;
-}
-const checkAuth = () => {
-
-    axios.post<{ userVerify: boolean }>('auth').then((res: any) => {
-        console.log(res)
-        if (res.data.userVerify == true) {
-            message.value = "Login successful";
-            isLoggedIn.value = true;
-            const redirectUri = localStorage.getItem('redirectUri');
-            if (redirectUri) {
-                localStorage.removeItem('redirectUri');
-                setTimeout(()=>{
-                    window.location.href = redirectUri;
-                },1000)
+                loading.value = false;
+                return token
+            } else {
+                liff.login();
             }
 
-        } else if (res.data.userVerify == false) {
+        })
+    }
+    const checkAuth = () => {
 
-            router.push({ name: 'login' })
-        } else {
+        axios.post<{ userVerify: boolean }>('auth').then((res: any) => {
+            console.log(res)
+            if (res.data.userVerify == true) {
+                message.value = "Login successful";
+                isLoggedIn.value = true;
+                const redirectUri = localStorage.getItem('redirectUri');
+                if (redirectUri &&redirectUri != import.meta.env.BASE_URL + '/auth') {
+                    localStorage.removeItem('redirectUri');
+                    setTimeout(() => {
+                        console.log('checkAuth',redirectUri)
+                        window.location.href = redirectUri;
+                    }, 1000)
+                }
 
-            router.push({ name: 'register' })
-        }
+            } else if (res.data.userVerify == false) {
 
-    }).catch((error: any) => {
-        if (error.response) {
+                router.push({ name: 'login' })
+            } else {
 
-            error.value = "System error";
-        } else if (error.request) {
-            console.log(error.request);
-        } else {
-            console.log('Error', error.message);
-        }
-        console.log(error.config);
-    })
-}
+                router.push({ name: 'register' })
+            }
+
+        }).catch((error: any) => {
+            if (error.response) {
+
+                error.value = "System error";
+            } else if (error.request) {
+                console.log(error.request);
+            } else {
+                console.log('Error', error.message);
+            }
+            console.log(error.config);
+        })
+    }
 
 
-const logout = () => {
-    liff.logout();
-    liff.closeWindow();
-    window.location.reload();
-}
+    const logout = () => {
+        liff.logout();
+        liff.closeWindow();
+        window.location.reload();
+    }
 
-load();
+    load();
 </script>
 
 

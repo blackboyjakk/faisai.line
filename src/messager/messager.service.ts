@@ -5,10 +5,11 @@ import { TextMessageContent } from '@line/bot-sdk/dist/webhook/model/textMessage
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/_entities/user.entity';
-import { BapiRequisitionItem } from 'src/_interface/bapiRequisitionItems.interface';
+import { BapiRequisitionItem } from 'src/document/dto/bapiRequisitionItems.dto';
 import { DocumentService } from 'src/document/document.service';
 import { Repository } from 'typeorm';
 import { roleMapAuth } from '../_entities/roleMapAuth.entity';
+import { PoHeader } from 'src/document/dto/poReleaseItems';
 
 @Injectable()
 export class MessagerService {
@@ -41,12 +42,14 @@ export class MessagerService {
 
     if (!event.replyToken) return;
 
-
-    switch ((event.message as TextMessageContent).text) {
+    
+      const message = (event.message as TextMessageContent).text
+    const [command,arg] = message.split(':')
+    switch (command) {
       case 'Menu': this.getMyMenu(event.replyToken); break;
-      case 'DisplayPR': this.getPrList(event.replyToken); break;
-      case 'DisplayPO': this.getPoList(event.replyToken); break;
-      case 'DisplaySO': this.getSoList(event.replyToken); break;
+      case 'DisplayPR': this.getPrList(event.replyToken,arg); break;
+      case 'DisplayPO': this.getPoList(event.replyToken,arg); break;
+      case 'DisplaySO': this.getSoList(event.replyToken,arg); break;
       default: return;
     }
 
@@ -123,14 +126,23 @@ export class MessagerService {
 
     return flex;
   }
-  async getPrList(replyToken: string) {
+  async getPrList(replyToken: string,arg:string='1') {
 
-    const docs = await this.documentService.getDocuments('PR_LIST')
+    const docs = await this.documentService.getPrDocuments()
+    
+    const page =   Number.parseInt(arg)-1
+    const from = page*10;
+    const to = from+10;
     const flex: FlexContainer = {
       type: "carousel",
-      contents: docs.map(doc => this.getBubbleDocument(doc))
+      contents: docs.slice( from, to).map(doc => this.getPrBubbles(doc))
     }
 
+      const moreBubble = this.getPaginBubble('PR',arg,from,to,docs.length  )
+       
+    if(moreBubble){
+      flex.contents.push(moreBubble)
+    }
     await this.client.replyMessage({
       replyToken: replyToken,
       messages: [{
@@ -141,10 +153,32 @@ export class MessagerService {
     });;
   }
 
-  getPoList(replyToken: string) {
-    throw new Error('Method not implemented.');
+  async getPoList(replyToken: string,arg:string='1') {
+    const docs = await this.documentService.getPoDocuments()
+    
+    const page =   Number.parseInt(arg)-1
+    const from = page*10;
+    const to = from+10;
+    const flex: FlexContainer = {
+      type: "carousel",
+      contents: docs.slice( from, to).map(doc => this.getPoBubbles(doc))
+    }
+
+      const moreBubble = this.getPaginBubble('PO',arg,from,to,docs.length  )
+       
+    if(moreBubble){
+      flex.contents.push(moreBubble)
+    }
+    await this.client.replyMessage({
+      replyToken: replyToken,
+      messages: [{
+        type: 'flex',
+        altText: 'Menu List',
+        contents: flex
+      }],
+    });
   }
-  getSoList(replyToken: string) {
+  getSoList(replyToken: string,page:string) {
     throw new Error('Method not implemented.');
   }
   getBubbleMenu(headerText, bodyText, actionLabel, actionText, imgUrl): FlexBubble {
@@ -197,7 +231,8 @@ export class MessagerService {
 
     return flex;
   }
-  getBubbleDocument(doc: BapiRequisitionItem): FlexBubble {
+  getPrBubbles(doc: BapiRequisitionItem): FlexBubble {
+   
     const flex: FlexBubble = {
       type: "bubble",
       size: "kilo",
@@ -249,7 +284,7 @@ export class MessagerService {
             action: {
               type: "uri",
               label: 'Approve',
-              uri: process.env.NODE_APP_BASE_URL + `document/${doc.preqNo}/${doc.preqItem}`
+              uri: process.env.NODE_APP_BASE_URL + `document/pr/${doc.preqNo}/${doc.preqItem}`
             },
             color: "#39C943FF",
             style: "primary"
@@ -260,9 +295,135 @@ export class MessagerService {
 
     return flex;
   }
+
+  getPoBubbles(doc: PoHeader): FlexBubble {
+   
+    const flex: FlexBubble = {
+      type: "bubble",
+      size: "kilo",
+      direction: "ltr",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: `PO No. : ${doc.poNumber}`,
+          },
+          {
+            type: "text",
+            text: `Vendor : ${doc.vendName}`,
+          },
+          {
+            type: "text",
+            text: `Company Code : ${doc.coCode}`,
+          },
+          {
+            type: "text",
+            text: `Purchasing Group : ${doc.purGroup}`,
+          },
+          {
+            type: "text",
+            text: `Purchasing Org : ${doc.purchOrg}`,
+          },
+          {
+            type: "text",
+            text: `Net  Value : ${getAmountFormat(doc.targetVal)} ${doc.currency}`,
+          },
+          {
+            type: "text",
+            text: `Document Date : ${getDateFormat(doc.docDate)}`,
+          }
+         
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "button",
+            action: {
+              type: "uri",
+              label: 'Approve',
+              uri: process.env.NODE_APP_BASE_URL + `document/po/${doc.poNumber}`
+            },
+            color: "#39C943FF",
+            style: "primary"
+          }
+        ]
+      }
+    }
+
+    return flex;
+  }
+  
+  getPaginBubble(docType:string,arg:string,from:number,to:number,total:number):FlexBubble{
+    const flex: FlexBubble = {
+      type: "bubble",
+      size: "kilo",
+      direction: "ltr",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: `PR items`,
+          },
+          {
+            type: "text",
+            text: `From: ${from+1} To: ${to < total ? to : total}`,
+          },
+          {
+            type: "text",
+            text: `Total : ${total}`,
+          },
+          
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+        ]
+      }
+    }
+    if(from != 0){
+      flex.footer.contents.push({
+        type: "button",
+        action: {
+          type: "message",
+          label: '<< Previous',
+          text:`Display${docType}:${Number.parseInt( arg)-1}`
+        },
+        color: "#39C943FF",
+        style: "primary"
+      })
+    }
+    if(total>to){
+      flex.footer.contents.push(
+        {
+          type: "button",
+          action: {
+            type: "message",
+            label: 'Next >>',
+            text:`Display${docType}:${Number.parseInt( arg)+1}`
+          },
+          color: "#39C943FF",
+          style: "primary"
+        })
+    }
+    return flex;
+  }
 }
 
 
 function getAmountFormat(amount, place = 2) {
   return Number(amount).toLocaleString(undefined, { minimumFractionDigits: place, maximumFractionDigits: place });
+}
+
+function getDateFormat(str:string) {
+   const date = new Date(str)
+return `${date.getDay()}/${date.getMonth()+1}/${date.getFullYear()}`;
 }

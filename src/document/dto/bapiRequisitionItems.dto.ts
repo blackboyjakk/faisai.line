@@ -1,5 +1,5 @@
 
-import {WorkflowItem} from './workflowItem.interface'
+import {WorkflowItem} from '../../_interface/workflowItem.interface'
 export class BapiRequisitionResponse {
   requisitionItems: BapiRequisitionItem[]
   Workflow:WorkflowItem[]

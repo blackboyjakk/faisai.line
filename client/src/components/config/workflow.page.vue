@@ -79,7 +79,7 @@
         loadDoc();
       } else {
 
-        localStorage.setItem('redirectUri', route.fullPath)
+        localStorage.setItem('redirectUri', window.location.href)
         liff.login();
 
       }

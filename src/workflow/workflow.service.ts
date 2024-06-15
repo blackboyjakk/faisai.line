@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
-import { BapiRequisitionItem } from '../_interface/bapiRequisitionItems.interface'
+import { BapiRequisitionItem } from '../document/dto/bapiRequisitionItems.dto'
 import { Repository } from 'typeorm';
 import { WorkflowStep } from '../workflow-step/entities/workflow-step.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WorkflowCondition } from './entities/workflow-condition';
-import { WorkflowRule } from './entities/workflow-rule.entity';
+import { WorkflowRule } from '../workflow-rule/entities/workflow-rule.entity';
 import { Workflow } from './entities/workflow.entity';
 import { WorkflowAction } from './entities/workflow-action';
 import { Company } from '../_entities/company.entity';
 import { Employee } from 'src/_entities/employee.entity';
 import { RequestContext } from 'src/common/request-context/request-context.model';
+import { PoHeader, PoReleaseItems } from 'src/document/dto/poReleaseItems';
 @Injectable()
 export class WorkflowService {
   constructor(
@@ -81,7 +82,7 @@ export class WorkflowService {
     })
     return wf;
   }
-  async genDocWorkflow(doc: BapiRequisitionItem, type: string) {
+  async genDocWorkflow(doc: any, type: string) {
     const emp: Employee = RequestContext.currentEmployee;
     const wf = await this.getWorkflowConfig(emp.companyCode, type)
 
@@ -121,10 +122,10 @@ export class WorkflowService {
     return await this.repoAction.findBy({ docNo, docItem, docYear })
 
   }
-  async approve(doc: BapiRequisitionItem, type: string, note: string) {
+  async approvePrDocument(doc: BapiRequisitionItem, type: string, note: string) {
     const emp: Employee = RequestContext.currentEmployee;
 
-    const wfActions = await this.getWorkflow(doc, type)
+    const wfActions = await this.getPrWorkflow(doc)
 
     if (wfActions.every(w => w.status == 'W')) {
       this.repoAction.save(wfActions)
@@ -132,8 +133,7 @@ export class WorkflowService {
 
     const wfAction = wfActions.find(w => w.status == 'W')
 
-
-    this.repoAction.update({
+    return await this.repoAction.update({
       companyCode: wfAction.companyCode
       , docNo: wfAction.docNo
       , docItem: wfAction.docItem
@@ -148,22 +148,57 @@ export class WorkflowService {
 
 
   }
-  async getWorkflow(doc: BapiRequisitionItem, type: string) {
-    const wfAction = await this.getWorkflowAction(doc.preqNo, doc.preqItem, (new Date(doc.preqDate))?.getFullYear())
+  async approvePoDocument(doc: PoReleaseItems, type: string, note: string) {
+    const emp: Employee = RequestContext.currentEmployee;
 
+    const wfActions = await this.getPoWorkflow(doc)
+
+    if (wfActions.every(w => w.status == 'W')) {
+      this.repoAction.save(wfActions)
+    }
+
+    const wfAction = wfActions.find(w => w.status == 'W')
+
+    return await this.repoAction.update({
+      companyCode: wfAction.companyCode
+      , docNo: wfAction.docNo
+      , docItem: wfAction.docItem
+      , docYear: wfAction.docYear
+      , workflowCode: wfAction.workflowCode
+      , seq: wfAction.seq
+      , stepCode: wfAction.stepCode
+
+    }, { status: 'A', empId: emp.empId })
+
+    // const step = wf.steps.find(s => !wfActions.some(a => a.companyCode == s.companyCode && a.workflowCode == s.workflowCode && a.stepCode == s.stepCode))
+
+
+  }
+  async getPrWorkflow(doc: BapiRequisitionItem) {
+ const wfAction = await this.repoAction.findBy({ docNo:doc.preqNo, docItem:doc.preqItem, docYear:(new Date(doc.preqDate))?.getFullYear()})
     if (wfAction.length > 0) {
       return wfAction
     } else {
-      return await this.simulateWorkflow(doc, type)
+      return await this.simulatePrWorkflow(doc, 'PR')
     }
   }
-  async simulateWorkflow(doc: BapiRequisitionItem, type: string) {
+  async getPoWorkflow(doc: PoReleaseItems):Promise<WorkflowAction[]> {
+    const header = doc.poHeaders.at(0)
+    const wfAction = await this.repoAction.findBy({ docNo:header.poNumber, docItem:'', docYear:(new Date(header.docDate))?.getFullYear()})
+ 
+    if (wfAction.length > 0) {
+      return wfAction
+    } else {
+      return await this.simulatePoWorkflow(header, 'PO')
+    }
+  }
+  async simulatePrWorkflow(doc: BapiRequisitionItem, type: string) :Promise<WorkflowAction[]>{
     const emp: Employee = RequestContext.currentEmployee;
     const wf = await this.genDocWorkflow(doc, type)
-    return wf.steps.map((step) => {
+    const steps = wf.steps.map((step) => {
       if (step?.rules?.length > 0) {
         const rule = step.rules.at(0);
-        return {
+        return new WorkflowAction( {
           docNo: doc.preqNo,
           docItem: doc.preqItem,
           docYear: (new Date(doc.preqDate))?.getFullYear(),
@@ -178,8 +213,35 @@ export class WorkflowService {
           action: step.action,
           status: 'W',
           empId: emp.empId,
-        }
+        })
       }
     })
+    return steps
+  }
+  async simulatePoWorkflow(header: PoHeader, type: string) :Promise<WorkflowAction[]>{
+    const emp: Employee = RequestContext.currentEmployee;
+    const wf = await this.genDocWorkflow(header, type)
+    const steps = wf.steps.map((step) => {
+      if (step?.rules?.length > 0) {
+        const rule = step.rules.at(0);
+        return new WorkflowAction( {
+          docNo: header.poNumber,
+          docItem: '',
+          docYear: (new Date(header.docDate))?.getFullYear(),
+          companyCode: emp.companyCode,
+          workflowCode: step.workflowCode,
+          stepCode: step.stepCode,
+          stepName: step.stepName,
+          ruleCode: rule.ruleCode,
+          seq: step.seq,
+          actorType: rule.actorType,
+          actorName: rule.actorName,
+          action: step.action,
+          status: 'W',
+          empId: emp.empId,
+        })
+      }
+    })
+    return steps
   }
 }

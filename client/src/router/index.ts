@@ -39,9 +39,19 @@ const router = createRouter({
       component:() =>  import('../components/auth/login.page.vue'),
     },
     {
-      path: '/document/:prNo/:itemNo',
-      name: 'document',
+      path: '/document/pr/:prNo/:itemNo',
+      name: 'document-pr',
       component:() =>  import('../components/document/pr-detail.page.vue'),
+    },
+    {
+      path: '/document/po/:poNo',
+      name: 'document-po',
+      component:() =>  import('../components/document/po-detail.page.vue'),
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: '404',
+      component:() =>  '404',
     }
   ]
 })

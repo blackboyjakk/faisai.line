@@ -1,12 +1,12 @@
 import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { AxiosError, AxiosRequestConfig } from 'axios';
-import { BapiRelInfo } from '../_interface/bapiRelInfo.interface'
-import { firstValueFrom, throwError } from 'rxjs';
-import { BapiRequisitionItem, BapiRequisitionResponse } from 'src/_interface/bapiRequisitionItems.interface';
-import { BapiMaterialDesc, Matnrlist } from 'src/_interface/bapiMaterialDesc.interface';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { BapiRelInfo } from './dto/bapiRelInfo.dto'
+import { BapiRequisitionItem, BapiRequisitionResponse } from 'src/document/dto/bapiRequisitionItems.dto';
+import { BapiMaterialDesc, Matnrlist } from 'src/document/dto/bapiMaterialDesc.dto';
 import { WorkflowService } from 'src/workflow/workflow.service';
-import { Employee } from 'src/_entities/employee.entity';
+import { RFC, RfcReadTable } from './dto/rfcReadTable.dto';
+import { PoHeader, PoReleaseItems, PoItem } from './dto/poReleaseItems';
 @Injectable()
 export class DocumentService {
   constructor(
@@ -14,18 +14,59 @@ export class DocumentService {
     private readonly workflow: WorkflowService
   ) { }
 
-  async getDocuments(type: string): Promise<BapiRequisitionItem[]> {
+  async getPrDocuments(): Promise<BapiRequisitionItem[]> {
     const url = 'BAPI_REQUISITION_GETITEMS?sap-client=900';
     let data = {
       delivDate: "2020-02-21",
       relCode: ''
     }
-
     const res = await this.http.axiosRef.post<BapiRequisitionResponse>(url, data);
-    return res.data.requisitionItems.slice(0, 10);
+    return res.data.requisitionItems;
+  }
+  async getPoDocuments() {
+    const rfcList = await this.getRfcReadTable()
+
+    return axios.all(rfcList.map((rfc) => this.getPoItemsRelease(rfc))).then(
+      axios.spread((...res) => {
+        const headers = res.map(m => m.data.poHeaders)
+        return headers.reduce((p: PoHeader[], c: PoHeader[]) => {
+          return p.concat(c);
+        }, [])
+      }
+
+      ))
+  }
+  async getRfcReadTable() {
+    const url = 'RFC_READ_TABLE?sap-client=900';
+    let data = {
+      delimiter: ",",
+      queryTable: "T16FC",
+      fields: [
+        {
+          fieldname: "FRGGR"
+        },
+        {
+          fieldname: "FRGCO"
+        }
+      ]
+    }
+
+    const res = await this.http.axiosRef.post<RfcReadTable>(url, data);
+    return res.data.data.map(data => {
+      return new RFC(data)
+    });
   }
 
-  async getDocumentDetail(prNo: string, itemNo: string): Promise<BapiRequisitionItem> {
+  getPoItemsRelease(rel: RFC) {
+    const url = 'BAPI_PO_GETITEMSREL?sap-client=900';
+    let payload = {
+      itemsForRelease: "X",
+      relGroup: rel.group,
+      relCode: rel.code
+    }
+    return this.http.axiosRef.post<PoReleaseItems>(url, payload);
+  }
+  async getPrDocumentDetail(prNo: string, itemNo: string): Promise<BapiRequisitionItem> {
     const url = 'BAPI_REQUISITION_GETDETAIL?sap-client=900';
     let data = {
       number: prNo,
@@ -47,6 +88,24 @@ export class DocumentService {
     }
   }
 
+
+  async getPoDocumentDetail(poNo: string): Promise<PoReleaseItems> {
+    const url = 'BAPI_PO_GETITEMS?sap-client=900';
+    let data = {
+        purchaseorder: poNo,
+        withPoHeaders: "X"
+      }
+
+    const res = await this.http.axiosRef.post<PoReleaseItems>(url, data).catch((error: AxiosError) => {
+      throw new InternalServerErrorException(error.message)
+    });
+
+    if (res.data.poHeaders?.length > 0 && res.data.poItems?.length > 0) {
+      return res.data;
+    } else {
+      throw new NotFoundException('Document not found')
+    }
+  }
 
   async getMaterialDescription(materials: string[]): Promise<Object[]> {
     const url = 'BAPI_MATERIAL_GETLIST?sap-client=900';
@@ -73,13 +132,23 @@ export class DocumentService {
       return Promise.resolve(matnrlist);
     }
   }
-  async approveDocument(prNo: string, itemNo: string, notes: string) {
-    
-    const doc = await this.getDocumentDetail(prNo, itemNo)
-    const wf =   this.workflow.approve(doc, "PR",notes)
+  async approvePrDocument(prNo: string, itemNo: string, notes: string) {
 
+    const doc = await this.getPrDocumentDetail(prNo, itemNo)
+    const result = await this.workflow.approvePrDocument(doc, "PR", notes)
+    if (result) {
+      this.postPrDocument(prNo, itemNo, notes)
+    }
   }
-  async postDocument(prNo: string, itemNo: string, notes: string) {
+  async approvePoDocument(prNo: string,  notes: string) {
+
+    const doc = await this.getPoDocumentDetail(prNo)
+    const result = await this.workflow.approvePoDocument(doc, "PO", notes)
+    if (result) {
+      this.postPoDocument(prNo, notes)
+    }
+  }
+  async postPrDocument(prNo: string, itemNo: string, notes: string) {
     const url = 'BAPI_REQUISITION_GETRELINFO?sap-client=900';
     let data = {
       number: prNo,
@@ -109,9 +178,38 @@ export class DocumentService {
       });
     }
   }
-  async getDocumentWorkflow(prNo: string, itemNo: string) {
-    const doc = await this.getDocumentDetail(prNo, itemNo)
-    const workflow = await this.workflow.simulateWorkflow(doc, "PR")
+  async postPoDocument(poNo: string,  notes: string) {
+    const url = 'BAPI_PO_GETRELINFO?sap-client=900';
+    let data = {
+      purchaseorder: poNo,
+      relCode: ''
+    }
+    const headers: AxiosRequestConfig = { auth: { username: 'dm_pt1', password: 'protos#2024' } }
+    const res = await this.http.axiosRef.post<BapiRelInfo>(url, data, headers)
+
+    if (res) {
+      if (res.data.return.length > 0) {
+        throw new BadRequestException(res.data.return[0].message);
+      }
+      if (res.data.releaseFinal.length == 0) {
+        throw new BadRequestException(`Purchase requisition ${poNo} not ready to post`);
+      }
+      if (res.data.generalReleaseInfo[0].relInd == 'R') {
+        throw new BadRequestException(`Purchase requisition ${poNo} already released`)
+      }
+      const url = process.env.SAP_APP_BASE_URL + 'BAPI_REQUISITION_RELEASE?sap-client=900';
+
+      res.data.releaseFinal.forEach(async (releaseFinal, i, array) => {
+        if (releaseFinal['relCode' + i] != '' && (res.data.releaseAlreadyPosted.length == 0 || (res.data.releaseAlreadyPosted.length > 0 && res.data.releaseAlreadyPosted['relCode' + i]))) {
+          data = { ...data, relCode: releaseFinal['relCode' + i] }
+          await this.http.axiosRef.post<BapiRelInfo>(url, data, headers)
+        }
+      });
+    }
+  }
+  async getPrDocumentWorkflow(prNo: string, itemNo: string) {
+    const doc = await this.getPrDocumentDetail(prNo, itemNo)
+    const workflow = await this.workflow.simulatePrWorkflow(doc, "PR")
     return workflow;
   }
 }
