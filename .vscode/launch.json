@@ -8,11 +8,11 @@
       "name": "Launch Edge",
       "request": "launch",
       "type": "msedge",
-      "url": "https://28f4-115-87-34-237.ngrok-free.app/",
+      "url": "https://nkct90cm-3000.asse.devtunnels.ms/",
       "webRoot": "${workspaceFolder}"
     },
     {
-      "command": "yarn build",
+      "command": "yarn dev",
       "name": "Build Vue",
       "request": "launch",
       "type": "node-terminal",

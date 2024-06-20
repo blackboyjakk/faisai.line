@@ -1,5 +1,5 @@
 
-export interface BapiRelInfo {
+export interface prRelInfo {
   generalReleaseInfo: GeneralReleaseInfo[]
   releaseAlreadyPosted: any[]
   releaseFinal: ReleaseFinal[]

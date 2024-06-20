@@ -31,7 +31,15 @@ export class WorkflowStepService {
 
 
   update(stepCode: string, updateWorkflowStepDto: UpdateWorkflowStepDto) {
-    this.repoWorkflowStep.update({ companyCode: updateWorkflowStepDto.companyCode, stepCode: updateWorkflowStepDto.stepCode }, { stepName: updateWorkflowStepDto.stepName, seq: updateWorkflowStepDto.seq, action: updateWorkflowStepDto.action })
+    this.repoWorkflowStep.update({
+      companyCode: updateWorkflowStepDto.companyCode,
+      workflowCode: updateWorkflowStepDto.workflowCode,
+      stepCode: updateWorkflowStepDto.stepCode
+    }, {
+      stepName: updateWorkflowStepDto.stepName,
+      seq: updateWorkflowStepDto.seq,
+      action: updateWorkflowStepDto.action
+    })
 
   }
 

@@ -13,6 +13,7 @@ declare module 'vue' {
     Button: typeof import('primevue/button')['default']
     Card: typeof import('primevue/card')['default']
     Column: typeof import('primevue/column')['default']
+    ConfigMenu: typeof import('./src/components/config/config-menu.vue')['default']
     DataTable: typeof import('primevue/datatable')['default']
     Dialog: typeof import('primevue/dialog')['default']
     'Home.page': typeof import('./src/components/home.page.vue')['default']
@@ -26,9 +27,9 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Tag: typeof import('primevue/tag')['default']
+    Textarea: typeof import('primevue/textarea')['default']
     'User.page': typeof import('./src/components/config/user.page.vue')['default']
     'Workflow.page': typeof import('./src/components/config/workflow.page.vue')['default']
     'WorkflowRule.page': typeof import('./src/components/config/workflow-rule.page.vue')['default']
-    'WorkflowStep.page': typeof import('./src/components/config/workflow-step.page.vue')['default']
   }
 }

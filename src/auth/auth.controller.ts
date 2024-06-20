@@ -43,8 +43,10 @@ export class AuthController {
     if (!body.userEmail) {
       throw new HttpException('Input Required', HttpStatus.BAD_REQUEST)
     }
-    this.authService.sentOtp(payload['sub'], body.userEmail);
+    this.authService.sentOtp(payload['sub'], body.userEmail).then(()=>{
+      
     return res.status(HttpStatus.OK).send();
+    });
   }
   @Post('login')
   @Public()
@@ -60,9 +62,11 @@ export class AuthController {
     if (!body.userOtp) {
       throw new HttpException('Input Required', HttpStatus.BAD_REQUEST)
     }
-    this.authService.verifyOtp(payload['sub'], body.userOtp, body.appType)
-
-
+    this.authService.verifyOtp(payload['sub'], body.userOtp, body.appType).then(()=>{
+      
     return res.status(HttpStatus.OK).send();
+    });
+
+
   }
 }

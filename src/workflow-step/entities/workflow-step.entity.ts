@@ -32,7 +32,7 @@ export class WorkflowStep  extends AbstractEntity<WorkflowStep>{
     @OneToMany(() => WorkflowRule,(rule:WorkflowRule )=> rule.step)
     rules:WorkflowRule[]
     
-    @OneToMany(() => WorkflowAction,(action:WorkflowAction )=> action.step)
-    actions: WorkflowAction[];
+    // @OneToMany(() => WorkflowAction,(action:WorkflowAction )=> action.step)
+    // actions: WorkflowAction[];
   
 }

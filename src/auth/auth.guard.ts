@@ -54,6 +54,8 @@ export class AuthGuard implements CanActivate {
     }
 
     const user = await this.authService.getUser(payload.sub)
+    const employee = await this.authService.getEmployee(user.empId)
+    const roles = employee.mapRoles.map(m=> m.roleCode)
 
     if (!user) {
 
@@ -66,6 +68,8 @@ export class AuthGuard implements CanActivate {
     // so that we can access it in our route handlers
     req['userId'] = payload.sub;
     req['user'] = user;
+    req['employee'] = employee;
+    req['roles'] = roles;
 
     return true;
   }

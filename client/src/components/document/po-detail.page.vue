@@ -1,5 +1,6 @@
 <script setup lang="ts">
-  import { getAmountFormat } from '@/helper/number-format';
+  import { lineLogin } from '@/helper/line-auth';
+import { getAmountFormat } from '@/helper/number-format';
 import liff from '@line/liff';
   import axios, { AxiosError } from 'axios';
   import { ref } from 'vue';
@@ -15,53 +16,23 @@ import liff from '@line/liff';
   const note = ref('');
   let token: string | null = '';
 
-  const load = async () => {
-    lineLogin().then(() => {
+    const load = async () => {
+        await lineLogin().then(() => {
+          loadDoc();
+        });
+    };
+  
 
-    }).catch(() => {
-      alert("Line Authentication failed");
-    });
-  };
-
-  const lineLogin = async () => {
-
-    liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }, () => {
-      if (liff.isLoggedIn()) {
-        loadDoc();
-      } else {
-
-         localStorage.setItem('redirectUri', window.location.href)
-        liff.login();
-
-      }
-    }, (error) => {
-      console.log(error)
-    })
-
-  }
-
-  const loadDoc = () => {
-
-
-    console.log('loadDoc');
+  const loadDoc = async () => {
 
     axios.post(`document/po/${poNo}`).then((res) => {
-      console.log(res.data);
       header.value = res.data.poHeader;
       items.value = res.data.poItems ;
       workflow.value = res.data.actions;
-    }).catch((error: AxiosError<{ message: string, statusCode: number }>) => {
-      if (error.response?.data.statusCode == 401) {
-
-        console.log('error', error);
-        localStorage.setItem('redirectUri', window.location.href);
-        setTimeout(() => {
-          router.push({ name: 'auth' })
-        }, 1000)
-      } else {
-        alert(error.response?.data.message);
-      }
-    });
+    }).catch((e)=>{
+      
+      alert(e)
+    })
   }
 
   const approve = () => {
@@ -74,7 +45,7 @@ import liff from '@line/liff';
     }, {
 
     }).then((res) => {
-      loadDoc
+      loadDoc()
     }).catch((error: AxiosError<{ message: string, statusCode: number }>) => {
 
       if (error.response?.data.statusCode == 401) {
@@ -95,10 +66,14 @@ import liff from '@line/liff';
     }
   }
   load();
+
+function fetchData() {
+  throw new Error('Function not implemented.');
+}
 </script>
 
 <template>
-  <Card>
+  <Card  style="max-width: 50rem;width:100%">
     <template #title>Approve Request</template>
     <template #content>
       <p class="m-0">

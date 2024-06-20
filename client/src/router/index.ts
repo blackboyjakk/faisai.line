@@ -14,13 +14,18 @@ const router = createRouter({
       component:() =>  import('@/components/config/user.page.vue'),
     },
     {
-      path: '/workflows',
-      name: 'workflows',
+      path: '/workflow',
+      name: 'workflow',
       component: () => import("../components/config/workflow.page.vue"),
     },
     {
-      path: '/users',
-      name: 'users',
+      path: '/workflow-rule',
+      name: 'workflow-rule',
+      component: () => import("../components/config/workflow-rule.page.vue"),
+    },
+    {
+      path: '/user',
+      name: 'user',
       component:() =>  import('@/components/config/user.page.vue'),
     },
     {

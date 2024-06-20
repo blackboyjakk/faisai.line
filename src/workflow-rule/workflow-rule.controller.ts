@@ -17,18 +17,18 @@ export class WorkflowRuleController {
     return this.workflowRuleService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.workflowRuleService.findOne(+id);
+  @Get(':ruleCode')
+  findOne(@Param('ruleCode') ruleCode: string) {
+    return this.workflowRuleService.findOne(ruleCode);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateWorkflowRuleDto: UpdateWorkflowRuleDto) {
-    return this.workflowRuleService.update(+id, updateWorkflowRuleDto);
+  @Patch(':workflowCode/:stepCode/:ruleCode')
+  async update(@Param('workflowCode') workflowCode: string,@Param('stepCode') stepCode: string,@Param('ruleCode') ruleCode: string, @Body() updateWorkflowRuleDto: UpdateWorkflowRuleDto) {
+    return await this.workflowRuleService.update(workflowCode,stepCode,ruleCode, updateWorkflowRuleDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.workflowRuleService.remove(+id);
+  @Delete(':ruleCode')
+  remove(@Param('ruleCode') ruleCode: string) {
+    return this.workflowRuleService.remove(ruleCode);
   }
 }

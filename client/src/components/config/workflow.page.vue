@@ -5,13 +5,14 @@
   import type { DropdownChangeEvent } from 'primevue/dropdown';
   import Dropdown from 'primevue/dropdown';
   import { inject, reactive, ref } from 'vue';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRouter } from 'vue-router';
   import { masterService } from '../common/services/services.provider';
   import type { Company } from '../common/types/company.type';
-  import type { Master } from '../common/types/master.type';
+  import type { KeyValue } from '../common/types/key-value.type';
+  import { lineLogin } from '@/helper/line-auth';
+import type { CodeName } from '../common/types/code-name.type';
+import ConfigMenu from './config-menu.vue'
 
-
-  const route = useRoute();
   const router = useRouter();
 
 
@@ -47,7 +48,26 @@
   const stepForm = reactive({ ...initStep })
   const stepDialog = ref(false);
 
-  const conditionDialog = ref(false);
+
+
+  const initRule = {
+    mode: '',
+    companyCode: '',
+    companyName: '',
+    workflowCode: '',
+    workflowName: '',
+    stepCode: '',
+    stepName: '',
+    seq: 0,
+    ruleCode: '',
+    ruleName: '',
+    actorType: 'ROLE',
+    actorName: ''
+  }
+  const ruleForm = reactive({ ...initRule })
+  const ruleDialog = ref(false);
+
+
   const initCondition = {
     seq: 0,
     logic: '',
@@ -58,36 +78,24 @@
   const conditionForm = reactive({ ...initCondition })
   const master = reactive({
     companies: new Array<Company>,
-    docTypes: masterService.doctypes,
-    actions: masterService.actions
+    roles: new Array<CodeName>,
+    docTypes:  new Array<CodeName>,
+    actions:  new Array<CodeName>,
   })
 
-  const load = async () => {
+  const init = async () => {
 
-    master.companies = await masterService.getAllCompany();
-    lineLogin().then(() => {
 
-    }).catch(() => {
-      alert("Line Authentication failed");
-    });
+      console.log('loadDoc')
+      master.companies = await masterService.getAllCompany();
+      master.roles = await masterService.getAllRole();
+      master.docTypes = await masterService.getAllDocTypes();
+      master.actions = await masterService.getAllActions();
+      loadDoc()
+
   };
 
-  const lineLogin = async () => {
 
-    liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }, () => {
-      if (liff.isLoggedIn()) {
-        loadDoc();
-      } else {
-
-        localStorage.setItem('redirectUri', window.location.href)
-        liff.login();
-
-      }
-    }, (error) => {
-      console.log(error)
-    })
-
-  }
 
   const loadDoc = () => {
 
@@ -102,31 +110,7 @@
 
 
       console.log(res)
-    }).catch((error: AxiosError<{ message: string, statusCode: number }>) => {
-      if (error.response?.data.statusCode == 401) {
-
-        console.log('error', error);
-        localStorage.setItem('redirectUri', route.path);
-        setTimeout(() => {
-          router.push({ name: 'auth' })
-        }, 1000)
-      } else {
-        alert(error.response?.data.message);
-      }
-    });
-  }
-  const onSelectWorkflow = (e: DropdownChangeEvent) => {
-    if (e.value) {
-      const wf = workflows.value.find(w => w['workflowCode'] == e.value)
-      if (wf && wf['steps']) {
-        steps.value = wf['steps'].map((s: any) => {
-          return { label: s.stepName, stepCode: s.stepCode, rules: s.rules }
-        })
-        selectedWorkflow.value = wf;
-        onSelectStep(steps.value.at(0).stepCode)
-      }
-    }
-    console.log(e)
+    })
   }
   const onSelectStep = (stepCode: string) => {
     if (selectedWorkflow.value) {
@@ -163,33 +147,41 @@
     stepDialog.value = true
   }
 
-  const editCondition = (slotProps: any) => {
+  const openRuleDialog = (mode: string, prop: any) => {
 
 
-    conditionForm.seq = slotProps.seq
-    conditionForm.logic = slotProps.logic
-    conditionForm.field = slotProps.field
-    conditionForm.operator = slotProps.operator
-    conditionForm.value = slotProps.value
-    conditionDialog.value = true
-    console.log(slotProps)
+    stepForm.mode = mode
+    stepForm.companyCode = prop.companyCode
+    stepForm.companyName = master.companies.find(c => c.companyCode == prop.companyCode)?.nameEn || ''
+    stepForm.workflowCode = prop.workflowCode
+    stepForm.workflowName = prop.workflowName
+    stepForm.stepCode = prop.stepCode
+    stepForm.stepName = prop.stepName
+
+    // conditionForm.seq = prop.seq
+    // conditionForm.logic = prop.logic
+    // conditionForm.field = prop.field
+    // conditionForm.operator = prop.operator
+    // conditionForm.value = prop.value
+    ruleDialog.value = true
+    console.log(prop)
   }
 
 
   const saveCondition = () => {
-    conditionDialog.value = false
+    ruleDialog.value = false
   }
   const saveWorkflow = () => {
 
     if (workflowForm.mode == 'New') {
       axios.post('workflow', workflowForm).then(res => {
         workflowDialog.value = false
-        load()
+        init()
       })
     } else if (workflowForm.mode == 'Edit') {
       axios.patch('workflow/' + workflowForm.workflowCode, workflowForm).then(res => {
         workflowDialog.value = false
-        load()
+        init()
       })
     }
   }
@@ -200,22 +192,27 @@
     if (stepForm.mode == 'New') {
       axios.post('workflow-step', stepForm).then(res => {
         stepDialog.value = false
-        load()
+        init()
       })
     } else if (stepForm.mode == 'Edit') {
       axios.patch('workflow-step/' + stepForm.stepCode, stepForm).then(res => {
         stepDialog.value = false
-        load()
+        init()
       })
     }
   }
-
+  const getActionDesc = (action : string) => {
+    return master.actions.find((m:CodeName) => m.code== action)?.name
+  }
   const onRowExpand = (event: any) => {
 
   };
-  load()
+  init()
 </script>
 <template>
+
+
+<ConfigMenu></ConfigMenu>
   <div class="container w-full flex flex-col mx-auto">
     <!-- <div class="flex flex-row">
       <Dropdown :options="workflows" optionLabel="name" optionValue="workflowCode" placeholder="Select a City"
@@ -233,7 +230,7 @@
         <template #header>
 
           <div class="flex gap-3">
-            <Button icon="pi pi-plus-circle" label="Create new Workflow"  size="small" 
+            <Button icon="pi pi-plus-circle" label="Create new Workflow" size="small"
               @click="openWorkflowDialog('New', { ...initWorkflow })"></Button>
           </div>
         </template>
@@ -246,7 +243,7 @@
 
         <Column headerStyle="width:4rem">
           <template #body="workflowProps">
-            <Button icon="pi pi-pencil" @click="openWorkflowDialog('Edit', workflowProps.data)"   size="small" />
+            <Button icon="pi pi-pencil" @click="openWorkflowDialog('Edit', workflowProps.data)" size="small" />
           </template>
         </Column>
 
@@ -256,18 +253,26 @@
             <DataTable :value="workflowProps.data.steps" size="small">
               <Column field="stepCode" header="Step Code" header-class="underline"></Column>
               <Column field="stepName" header="Step Name" header-class="underline"></Column>
-              <Column field="action" header="Action" header-class="underline"></Column>
+              <Column field="action" header="Action" header-class="underline">
+              <template #body="stepProps">
+                {{ getActionDesc(stepProps.data.action) }}
+              </template>
+              </Column>
 
 
               <Column headerStyle="width:4rem">
                 <template #body="stepProps">
-                  <Button icon="pi pi-pencil" size="small" @click="openStepDialog('Edit',{... stepProps.data, ...workflowProps.data})" />
+                  <div class="flex flex-row align-items-center gap-3 mb-3">
+                    <Button icon="pi pi-pencil" size="small" rounded outlined
+                      @click="openStepDialog('Edit', { ...stepProps.data, ...workflowProps.data })" />
+                 
+                  </div>
                 </template>
               </Column>
               <template #footer>
 
                 <div class="flex gap-3">
-                  <Button icon="pi pi-plus-circle" label="Create new Step"  size="small" 
+                  <Button icon="pi pi-plus-circle" label="Create New Step" size="small" rounded outlined
                     @click="openStepDialog('New', { ...initStep, ...workflowProps.data })"></Button>
                 </div>
               </template>
@@ -276,67 +281,17 @@
         </template>
       </DataTable>
     </Panel>
-    <!-- <div class="flex flex-row">
-      <Breadcrumb :model="steps">
-        <template #item="{ item, props }">
-         
-          <a v-bind="props.action" @click="() => onSelectStep(item.stepCode)">
-            <span :class="[item.icon, 'text-color']" />
-            <span class="text-primary font-semibold">{{ item.label }}</span>
-          </a>
-        
-        </template>
-      </Breadcrumb>
-    </div>
-    <div class="flex flex-row">
-      <Panel>
-
-        <Accordion :activeIndex="0">
-          <AccordionTab v-for="rule in rules" key="ruleCode">
-            <template #header>
-              <span class="flex align-items-center gap-2 w-full">
-                <span class="font-bold white-space-nowrap w-2/3">{{ rule.ruleCode }}</span>
-                <Badge :value="rule.actorName" class="ml-auto mr-2 w-1/3" />
-              </span>
-            </template>
-            <DataTable :value="rule.conditions">
-              <Column field="logic"></Column>
-              <Column field="field"></Column>
-              <Column field="operator"></Column>
-              <Column field="value"></Column>
-
-
-              <Column headerStyle="width:4rem">
-                <template #body="slotProps">
-                  <Button icon="pi pi-pencil" @click="editCondition(slotProps.data)" />
-                </template>
-              </Column>
-              <template #footer>
-
-                <div class="flex gap-3 mt-1 w-full">
-                  <Button icon="pi pi-plus-circle"
-                    @click="editCondition({ ...initCondition, seq: rule.conditions?.length + 1 })"></Button>
-                </div>
-              </template>
-            </DataTable>
-          </AccordionTab>
-
-        </Accordion>
-
-
-        <Toast />
-      </Panel>
-    </div> -->
+    
   </div>
 
   <Dialog v-model:visible="workflowDialog" modal header="Workflow">
 
-    <div class="flex flex-col align-items-center gap-3 mb-3">
+    <div class="flex flex-col gap-3 mb-3">
 
       <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Company" v-model="workflowForm.companyCode"
         option-value="companyCode" option-label="nameEn" :options="master.companies" />
       <Dropdown :disabled="workflowForm.mode == 'Edit'" placeholder="Document Type" v-model="workflowForm.docType"
-        option-value="value" option-label="name" :options="master.docTypes" />
+        option-value="code" option-label="name" :options="master.docTypes" />
 
       <InputText placeholder="Workflow Code" v-model="workflowForm.workflowCode" />
       <InputText placeholder="Workflow Name" v-model="workflowForm.workflowName" />
@@ -350,12 +305,12 @@
   </Dialog>
   <Dialog v-model:visible="stepDialog" modal header="Step">
 
-    <div class="flex flex-col align-items-center gap-3 mb-3">
-      <div>Company : {{ stepForm.companyName }}</div>
-      <div>Workflow : {{ stepForm.workflowName }}</div>
+    <div class="flex flex-col gap-3 mb-3">
+      <div>Company : {{ ruleForm.companyName }}</div>
+      <div>Workflow : {{ ruleForm.workflowName }}</div>
       <InputText :disabled="stepForm.mode == 'Edit'" placeholder="Step Code" v-model="stepForm.stepCode" />
       <InputText placeholder="Step Name" v-model="stepForm.stepName" />
-      <Dropdown placeholder="Action" v-model="stepForm.action" option-value="value" option-label="name"
+      <Dropdown placeholder="Action" v-model="stepForm.action" option-value="code" option-label="name"
         :options="[{ value: 'C', name: 'Check' }, { value: 'P', name: 'Post' }]" />
     </div>
     <template #footer>
@@ -366,22 +321,4 @@
     </template>
   </Dialog>
 
-  <!-- <Dialog v-model:visible="conditionDialog" modal header="Condition">
-    <div class="flex align-items-center gap-3 mb-3">
-      <Dropdown v-if="conditionForm.seq > 1" placeholder="Logic" v-model="conditionForm.logic" option-value="value"
-        option-label="name" :options="[{ value: '&&', name: 'AND' }]" class="flex-auto" />
-      <Dropdown placeholder="Field" v-model="conditionForm.field" option-value="value" option-label="name"
-        :options="[{ value: 'cAmtBapi', name: 'Amount' }, { value: 'plant', name: 'Plant' }]" class="flex-auto" />
-      <Dropdown placeholder="Operator" v-model="conditionForm.operator" option-value="value" option-label="name"
-        :options="[{ value: '==', name: '=' }, { value: '>', name: '>' }, { value: '<', name: '<' }]"
-        class="flex-auto" />
-      <InputText placeholder="Value" v-model="conditionForm.value" class="flex-auto" />
-    </div>
-    <template #footer>
-      <div class="flex gap-3 mt-1">
-        <Button type="button" label="Cancel" severity="secondary" block @click="conditionDialog = false"></Button>
-        <Button type="button" label="Save" @click="saveCondition" block></Button>
-      </div>
-    </template>
-  </Dialog> -->
 </template>

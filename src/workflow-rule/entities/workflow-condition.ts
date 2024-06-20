@@ -2,17 +2,17 @@ import { WorkflowStep } from '../../workflow-step/entities/workflow-step.entity'
 
 import {AbstractEntity} from 'src/_entities/_abtract.entity'
 import { Entity, Column, PrimaryColumn ,ManyToOne, JoinColumn, PrimaryGeneratedColumn} from 'typeorm';
-import { WorkflowRule } from '../../workflow-rule/entities/workflow-rule.entity';
+import { WorkflowRule } from './workflow-rule.entity';
 @Entity()
 export class WorkflowCondition  extends AbstractEntity<WorkflowCondition>{
 
     @PrimaryColumn({length:4})
     companyCode :string
     
-    @PrimaryColumn({length:10})
+    @Column({length:10})
     workflowCode:string;
 
-    @PrimaryColumn({length:10})
+    @Column({length:10})
     stepCode :string
 
     @PrimaryColumn({length:10})
@@ -21,8 +21,6 @@ export class WorkflowCondition  extends AbstractEntity<WorkflowCondition>{
     @PrimaryColumn()
     seq:number
 
-    @Column({length:3,nullable:true})
-    logic:string
 
     @Column({length:20})
     field:string

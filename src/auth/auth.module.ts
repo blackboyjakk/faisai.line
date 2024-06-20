@@ -9,6 +9,7 @@ import { HttpModule } from '@nestjs/axios';
 import { Company } from 'src/_entities/company.entity';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth.guard';
+import { MailService } from 'src/mail/mail.service';
 
 @Module({
   imports: [HttpModule.register({
@@ -17,7 +18,7 @@ import { AuthGuard } from './auth.guard';
     },
   }), TypeOrmModule.forFeature([User, UserVerify, Employee, Company])],
   controllers: [AuthController],
-  providers: [AuthService, {
+  providers: [AuthService,MailService, {
     provide: APP_GUARD,
     useClass: AuthGuard,
   },],

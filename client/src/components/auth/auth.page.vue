@@ -3,8 +3,12 @@
     import { ref } from 'vue'
     import liff from '@line/liff';
     import axios, { AxiosError } from 'axios';
+    import { useRoute } from 'vue-router';
     import router from '../../router/index';
+import { lineLogin } from '@/helper/line-auth';
+import { Param } from '@nestjs/common';
 
+       const route = useRoute();
     const loading = ref(true);
     const isLoggedIn = ref(false);
     const message = ref('');
@@ -16,28 +20,7 @@
         });
     };
 
-    const lineLogin = async () => {
-
-        return liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID }).then(() => {
-            if (liff.isLoggedIn()) {
-                const token = liff.getIDToken();
-                console.log(token);
-                if (token) {
-                    localStorage.setItem(`LIFF_STORE:${import.meta.env.VITE_LINE_LIFF_ID}:IDToken`, token)
-                }
-                else {
-                    liff.logout()
-                    liff.login();
-                }
-
-                loading.value = false;
-                return token
-            } else {
-                liff.login();
-            }
-
-        })
-    }
+    
     const checkAuth = () => {
 
         axios.post<{ userVerify: boolean }>('auth').then((res: any) => {
@@ -45,11 +28,11 @@
             if (res.data.userVerify == true) {
                 message.value = "Login successful";
                 isLoggedIn.value = true;
-                const redirectUri = localStorage.getItem('redirectUri');
-                if (redirectUri &&redirectUri != import.meta.env.BASE_URL + '/auth') {
-                    localStorage.removeItem('redirectUri');
+                const redirectUri = localStorage.getItem('redirectUri:' + sessionStorage.tabID);
+                if (redirectUri && redirectUri != import.meta.env.VITE_APP_BASE_URL + '/auth') {
+                    localStorage.removeItem('redirectUri:' + sessionStorage.tabID);
                     setTimeout(() => {
-                        console.log('checkAuth',redirectUri)
+                        console.log('checkAuth', redirectUri)
                         window.location.href = redirectUri;
                     }, 1000)
                 }

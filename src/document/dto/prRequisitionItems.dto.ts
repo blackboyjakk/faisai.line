@@ -1,12 +1,12 @@
 
 import {WorkflowItem} from '../../_interface/workflowItem.interface'
-export class BapiRequisitionResponse {
-  requisitionItems: BapiRequisitionItem[]
+export class prRequisitionResponse {
+  requisitionItems: prRequisitionItem[]
   Workflow:WorkflowItem[]
-  return: BapiReturn[]
+  return: prReturn[]
 }
 
-export class BapiRequisitionItem {
+export class prRequisitionItem {
   preqNo: string
   preqItem: string
   docType: string ="PR"
@@ -93,7 +93,7 @@ export class BapiRequisitionItem {
   budgetPeriod: string
 }
 
-export class BapiReturn {
+export class prReturn {
   type: string
   code: string
   message: string

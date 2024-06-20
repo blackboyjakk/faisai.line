@@ -2,7 +2,7 @@ import { WorkflowStep } from '../../workflow-step/entities/workflow-step.entity'
 
 import {AbstractEntity} from 'src/_entities/_abtract.entity'
 import { Entity, Column, PrimaryColumn ,ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn} from 'typeorm';
-import { WorkflowCondition } from './workflow-condition';
+import { WorkflowCondition } from '../../workflow-rule/entities/workflow-condition';
 @Entity()
 export class WorkflowAction  extends AbstractEntity<WorkflowAction>{
 
@@ -60,8 +60,8 @@ export class WorkflowAction  extends AbstractEntity<WorkflowAction>{
     modifyDate:Date;
 
     // @JoinColumn([{name:'companyCode',referencedColumnName:'companyCode'},{name:'workflowCode',referencedColumnName:'workflowCode'},{name:'stepCode',referencedColumnName:'stepCode'}])
-    @JoinColumn([{name:'companyCode',referencedColumnName:'companyCode'},{name:'workflowCode',referencedColumnName:'workflowCode'},{name:'stepCode',referencedColumnName:'stepCode'}])
-    @ManyToOne(()=>WorkflowStep, (step:WorkflowStep) => step.actions)
-    step:WorkflowStep
+    // @JoinColumn([{name:'companyCode',referencedColumnName:'companyCode'},{name:'workflowCode',referencedColumnName:'workflowCode'},{name:'stepCode',referencedColumnName:'stepCode'}])
+    // @ManyToOne(()=>WorkflowStep, (step:WorkflowStep) => step.actions)
+    // step:WorkflowStep
     
 }

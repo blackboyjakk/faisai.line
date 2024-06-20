@@ -4,6 +4,7 @@
   import { ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useConfirm } from "primevue/useconfirm";
+import { lineLogin } from '@/helper/line-auth';
 
   const route = useRoute();
   const router = useRouter();
@@ -12,67 +13,73 @@
   const doc = ref<any>({});
   const workflow = ref<any>([]);
   const note = ref('');
+  const canApprove = ref(false);
+  const canReject = ref(false);
   let token: string | null = '';
   const confirm = useConfirm();
   const isLogin = ref(false);
-  const load = async () => {
+  const activeFlow = ref(0);
+    const init = async () => {
+        await lineLogin().then((response) => {
+  
+          isLogin.value = true
+          loadDoc();
+          
+        }).catch(()=>{
+          alert('error init')
+        });
+    };
 
-    await liff.init({ liffId: import.meta.env.VITE_LINE_LIFF_ID })
-
-    if (liff.isInClient()) {
-      loadDoc()
-    } else {
-      if (liff.isLoggedIn()) {
-        isLogin.value = true
-        loadDoc()
-      } else {
-        localStorage.setItem('redirectUri',  window.location.href);
-      }
-    }
-  };
-
-  const lineLogin = () => {
-    liff.login()
-  }
 
   const loadDoc = () => {
 
 
-    console.log('loadDoc');
-
     axios.post(`document/pr/${prNo}/${itemNo}`).then((res) => {
-      console.log(res.data);
+
       doc.value = res.data.item;
       workflow.value = res.data.actions;
-    }).catch((error: AxiosError<{ message: string, statusCode: number }>) => {
-      if (error.response?.data.statusCode == 401) {
-
-        console.log('error', error);
-        localStorage.setItem('redirectUri', window.location.href);
-        setTimeout(() => {
-          router.push({ name: 'auth' })
-        }, 1000)
-      } else {
-        alert(error.response?.data.message);
-      }
-    });
+      canApprove.value = res.data.canApprove;
+      canReject.value =res.data.canReject;
+      // activeFlow.value = workflow.value.findIndex((w:any) =>w.status == 'W');
+    }).catch((e)=>{
+      
+      alert(e)
+    })
   }
 
   const approve = () => {
 
+    if(!workflow.value.length){
+      alert('Workflow Not Found')
+      return;
+    }
     axios.post(`document/pr/${prNo}/${itemNo}/approve`, {
       note: note.value
     }, {
 
     }).then((res) => {
-      loadDoc
-    }).catch((error: AxiosError<{ message: string, statusCode: number }>) => {
+      alert('Approve Done')
+      loadDoc()
+    })
+  }
+  const reject = () => {
 
-      if (error.response?.data.statusCode == 401) {
-        router.push({ name: "auth" });
-      }
-      alert(error.response?.data.message);
-    });
+    if(!workflow.value.length){
+      alert('Workflow Not Found')
+      return;
+    }
+    if(!note.value?.trim()){
+      alert('Note is required for reject.')
+      return;
+    }
+    axios.post(`document/pr/${prNo}/${itemNo}/reject`, {
+      note: note.value
+    }, {
+
+    }).then((res) => {
+      alert('Reject Done')
+      loadDoc()
+    })
   }
   const displayWF = () => {
     axios.post(`document/pr/${prNo}/${itemNo}/workflow`, {
@@ -97,7 +104,7 @@
         break;
     }
   }
-  load();
+  init();
 </script>
 
 <template>
@@ -115,31 +122,33 @@
         <div> <label>Qty : </label> <span>{{ (doc.quantity) }}</span></div>
         <div> <label>Total Value : </label> <span>{{ doc.priceUnit }} {{ doc.currency }}</span></div>
 
-        <!-- <div>
+        <div>
           <label for="note">Additional Note :</label><br>
           <Textarea v-model="note" rows="5" class="w-full" autoResize />
-        </div> -->
+        </div>
 
       </form>
-      <Accordion :multiple="true">
-        <AccordionTab v-for="wf in workflow" :key="wf.step">
+      <Accordion :multiple="true" :activeIndex="activeFlow">
+        <AccordionTab v-for="(value, key, index) in workflow" :key="value.step">
           <template #header>
             <span class="flex align-items-center gap-2 w-full">
-              <span class="font-bold white-space-nowrap w-2/3">{{ wf.stepName }}</span>
+              <span class="font-bold white-space-nowrap w-2/3">{{ value.stepName }}</span>
               <span class=" w-1/3">
-                <Tag :value="wf.status" :severity="actionSeverity(wf.status)" class="ml-auto mr-2" />
+                <Tag :value="value.status" :severity="actionSeverity(value.status)" class="ml-auto mr-2" />
               </span>
             </span>
           </template>
-          <span class="m-0">{{ wf.actorType }}: {{ wf.actorName }}</span>
+          <span class="m-0">{{ value.actorType }}: {{ value.actorName }}</span>
         </AccordionTab>
       </Accordion>
       </p>
     </template>
     <template #footer>
-      <div class="flex gap-3 mt-1">
-        <Button label="Approve" class="w-full" @click.prevent="approve" />
-      </div>
+      <div class="flex flex-row gap-3 mt-1">
+        <Button label="Reject" class="w-full" @click.prevent="reject" v-if="canReject" severity="danger" outlined />
+    
+        <Button label="Approve" class="w-full" @click.prevent="approve" v-if="canApprove"  />
+  </div>
     </template>
   </Card>
   <Button v-if="!isLogin" label="Login" @click="lineLogin"></Button>

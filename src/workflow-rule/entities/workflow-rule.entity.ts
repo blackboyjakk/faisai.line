@@ -2,7 +2,7 @@ import { WorkflowStep } from '../../workflow-step/entities/workflow-step.entity'
 
 import { AbstractEntity } from 'src/_entities/_abtract.entity'
 import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
-import { WorkflowCondition } from '../../workflow/entities/workflow-condition';
+import { WorkflowCondition } from './workflow-condition';
 @Entity()
 export class WorkflowRule extends AbstractEntity<WorkflowRule> {
 

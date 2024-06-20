@@ -1,32 +1,32 @@
 
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AxiosError, AxiosResponse } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
-import { Company } from 'src/_entities/company.entity';
 import { Employee } from 'src/_entities/employee.entity';
 import { User } from 'src/_entities/user.entity';
 import { UserVerify } from 'src/_entities/userVerify.entity';
-import { TokenDecoded } from 'src/_interface/tokenDecoded.interface';
 import { Repository } from 'typeorm';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly httpService: HttpService,
+    private readonly mailService: MailService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserVerify)
     private readonly userVerifyRepository: Repository<UserVerify>,
     @InjectRepository(Employee)
-    private readonly employeeRepository: Repository<Employee>,
-    @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
-    private readonly httpService: HttpService
+    private readonly employeeRepository: Repository<Employee>
   ) { }
 
   async getUser(userId: string) {
-    return this.userRepository.findOne({where:{ userId: userId },relations:{employee:true}});
+    return this.userRepository.findOne({ where: { userId: userId } });
+  }
+  async getEmployee(empId: string) {
+    return this.employeeRepository.findOne({ where: { empId: empId },relations:{mapRoles:true}});
   }
   async getUserVerify(userId: string) {
     return this.userVerifyRepository.findOneBy({ userId: userId });
@@ -44,29 +44,37 @@ export class AuthService {
     if (emp != null) {
       let expDate = new Date();
       expDate.setDate(expDate.getDate() + 365);
-      const userVerify = new UserVerify({
-        userId: userId,
-        email: userEmail,
-        otp: this.GenOtpNumber(),
-        otpExpired: expDate,
-        isVerify: false,
 
-      })
-        ;
-      this.userVerifyRepository.save(userVerify);
+      const otp = this.GenOtpNumber()
+      const sendResult = await this.mailService.postMail({ to: userEmail, from: 'mr.kurung@gmail.com', subject: 'OTP', text: otp })
+
+      if (sendResult.message = 'success') {
+        const userVerify = new UserVerify({
+          userId: userId,
+          email: userEmail,
+          otp: otp,
+          otpExpired: expDate,
+          isVerify: false,
+
+        })
+          ;
+        return this.userVerifyRepository.save(userVerify);
+      }else{
+        throw new InternalServerErrorException('Send Mail Error')
+      }
     }
   }
-  async verifyOtp(userId: string, opt: string, appType: string): Promise<void> {
+  async verifyOtp(userId: string, opt: string, appType: string): Promise<User> {
     let userVerify = await this.getUserVerify(userId);
     if (!userVerify) {
       throw new HttpException('Line account not found', 400)
-    }else
-    if (userVerify.otpExpired < new Date()) {
+    } else
+      if (userVerify.otpExpired < new Date()) {
 
-      throw new HttpException('OTP is expired', 400)
-    }else {
-      this.userVerifyRepository.update(userVerify.id,{isVerify:true})
-    }
+        throw new HttpException('OTP is expired', 400)
+      } else {
+        this.userVerifyRepository.update(userVerify.id, { isVerify: true })
+      }
     var emp = await this.getEmpoyeeByEmail(userVerify.email);
     if (!emp) {
       throw new HttpException('Employee not found', 400)
@@ -83,7 +91,7 @@ export class AuthService {
     })
 
 
-    this.userRepository.save(user);
+   return  this.userRepository.save(user);
 
 
 
@@ -99,15 +107,19 @@ export class AuthService {
     params.append('id_token', token)
     params.append('client_id', process.env.CHANNEL_ID)
     const headers = {
-      'Content-Type': 'application/x-www-form-urlencoded'
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Bearer ' + token
     }
 
-    let cridential = await firstValueFrom(this.httpService.post<TokenDecoded>('https://api.line.me/oauth2/v2.1/verify', params, { headers })
+    let cridential = await firstValueFrom(this.httpService.get<any>('https://api.line.me/oauth2/v2.1/userinfo', { headers })
       .pipe(catchError(async (error) => {
 
         throw new UnauthorizedException(error.response.data.error_description)
 
       })));
+
+
+
     if (cridential) {
       return cridential.data
     }

@@ -12,4 +12,9 @@ export class MasterController {
   findAllCompany() {
     return this.masterService.findAllCompany();
   }
+  @Get('/role')
+  @Public()
+  findAllRole() {
+    return this.masterService.findAllRole();
+  }
 }

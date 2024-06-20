@@ -13,7 +13,10 @@ export class RequestContext<TRequest = any, TResponse = any> {
     return this.currentContext?.req['user'];
   }
   static get currentEmployee():Employee {
-    return this.currentUser?.employee;
+    return this.currentContext?.req['employee'];
+  }
+  static get currentRoles():string[] {
+    return this.currentContext?.req['roles'];
   }
   constructor(public readonly req: TRequest, public readonly res: TResponse) {}
 }

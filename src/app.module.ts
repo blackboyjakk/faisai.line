@@ -15,6 +15,7 @@ import { WorkflowModule } from './workflow/workflow.module';
 import { MasterModule } from './master/master.module';
 import { WorkflowStepModule } from './workflow-step/workflow-step.module';
 import { WorkflowRuleModule } from './workflow-rule/workflow-rule.module';
+import { MailModule } from './mail/mail.module';
 
 const routes = [
   {
@@ -40,7 +41,7 @@ const routes = [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'client/dist'),
+      rootPath: join(__dirname, '..', 'client'),
     }),
     HttpModule,
     AuthModule,
@@ -49,7 +50,8 @@ const routes = [
     WorkflowModule,
     MasterModule,
     WorkflowStepModule,
-    WorkflowRuleModule,],
+    WorkflowRuleModule,
+    MailModule,],
   controllers: [AppController],
   providers: [AppService],
 })
